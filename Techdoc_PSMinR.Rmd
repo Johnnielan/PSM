@@ -1,0 +1,106 @@
+---
+title: "Propensity Score Matching in R"
+output:
+  word_document: default
+  html_notebook: default
+---
+##Introduction
+
+Randomized controlled trials (RCTs) are considered the gold standard approach for estimating the effects of treatments, interventions, and exposures (hereafter referred to as treatments) on outcomes. Random treatment allocation ensures that treatment status will not be confounded with either measured or unmeasured baseline characteristics. (Austin, 2011)
+Observational (or nonrandomized) studies draw and record the subjects according to the specific characteristics in the natural state, and describe and compare the outcomes to draw conclusions. Unlike RCTs, researchers of such research methods have no (or failed) artificial setting of characteristics of participants.
+The propensity score was defined by (Rosenbaum & Rubin, 1983) to be the probability of treatment assignment conditional on observed baseline covariates: $p_i=Pr(T_i=1|X_i)$. Propensity scores are an alternative method to estimate the effect of receiving treatment when random assignment of treatments to subjects is not feasible. In practice, the propensity score is most often estimated using a logistic regression model. It is the estimate predicted probability of accepting treatment (exposure) derived from the logistic regression model.  Although logistic regression appears to be the most commonly used method for estimating the propensity score, the use of bagging or boosting, recursive partitioning or tree-based methods, random forest, and neural networks for estimating the propensity score have been examined. 
+Propensity score matching (PSM) refers to the pairing of treatment and control units with similar values on the propensity score; and possibly other covariates (the characteristics of participants); and the discarding of all unmatched units.
+
+##What is PSM in simple terms...
+
+PSM is done on observational studies. It is done to remove the selection bias between the treatment and the control groups.
+To give an example, if we want to observe the effect of the behavior of smoking on lung cancer; to judge if smoking is the only reason which influenced them to caught lung cancer; we cannot deduce this as we do not know whether the people who smoke are equivalent to the people who do not smoke. There might be other influential factors that cause lung cancer and it might not be the effect of smoking at all. In that case, we can go for a propensity score matching estimation to observe how much impact smoking had on lung cancer.
+
+##Propensity Score Matching in R
+
+###Nearest Neighbour Matching
+Here is a demonstration of how to create and analyze matched data for propensity score analysis using the MatchIt package. 
+First, we import a sample data called "lalonde":
+A data frame with 614 obervations with 185 in the treatment group and 429 in the control group. There are 10 variables measured for each individual. "treat" is the treatment assignment (1=treated, 0=control). "age" is age in years. "educ" is education in number of years of schooling. "black" is an indicator for African-American(1=African-American, 0=not). "hispan" is an indicator for being of Hispanic origin (1=Hispanic, 0=not). "married" is an indicator for married (1=married, 0=not married). "nodegree" is an indicator for whether the individual has a high school degree (1=no degree, 0=degree). "re74" is income in 1974, in U.S. dollars. "re75" is income in 1975, in U.S. dollars. "re78" is income in 1978, in U.S. dollars.
+
+
+```{r}
+library(MatchIt)
+data("lalonde")
+head(lalonde, n=10)
+```
+
+
+Creating a tableone pre-matching table:
+We will use the tableone package to summarize the data using the covariates that we stored in xvars. We are going to stratify the treatment variable, i.e., we will check the balance in the dataset among treatment group and control group. The 'test = False' states that we don't require a significance test; instead we just want to see the mean and standard deviation of the covariates in the results.
+
+```{r}
+library(tableone)
+xvars <- c("age","educ","black","hispan","married","nodegree","re74","re75","re78")
+table1 <- CreateTableOne(vars = xvars,strata = "treat", data = lalonde, test = FALSE)
+```
+
+Then we are going to print the statistics and also see the Standardized Mean Differences (SMD) in the variables.
+
+```{r}
+print(table1, smd = TRUE)
+```
+
+Next, we want to analyze how well the matching procedure worked. First, we can look at a summary by using the summary function. The summary function provides pieces of information for the full and the matched data set. First it provides data on the balance for all of the data without matching. It provides information the means of the treated and the control. It also provides the standard deviation for the control group. It provides means and sd's for both the treatment and control groups across each of the included covariates. Next there are QQ columns for the median, mean, and maximum quantiles differences between the treatment and control groups. Smaller QQ values indicate better matching data.
+
+The summary of balance for matched data is interpreted in the same way as for the summary of balance for all data with the only difference being that the summary of balance for matched data uses only matched data. Therefore, the user can compare the differences in means and reductions in quantiles to evaluate if the matching process reduced the observed differences between the public and private group with the matched data. Finally, there is the percent balance improvement, which provides percentage improvement by using the matched data relative to all the data. In this example, there is no improvement, because we were able to match all of the data, which is likely because the data were randomly generated.
+
+Finally, there are two plots that researchers can review to evaluate the effectiveness of the matching procedure. First is the jitter plot, which shows the distribution of unmatched and matched pairs for both treatment and control groups. You can see how close the data are from the matched and unmatched groups demonstrating the matched groups similarities among the observed covariates. Finally, we can evaluate a histogram of the matched and raw (i.e. total) data sets to evaluate how much better the matching procedures matched the data.
+
+```{r}
+m.out <- matchit(treat~age+educ+black+hispan+married+nodegree+re74+re75+re78, data = lalonde, method = "nearest", ratio = 1)
+summary(m.out)
+```
+
+```{r}
+m.outdata = match.data(m.out)
+write.csv(m.outdata,"m_out.csv")
+plot(m.out,type = "jitter")
+```
+```{r}
+plot(m.out, type = "hist")
+```
+
+```{r}
+table_match <- CreateTableOne(vars = xvars,strata = "treat", data = m.outdata, test = FALSE)
+print(table_match, smd = TRUE)
+```
+
+
+### Use Logistic regression model
+
+Now we use a more common way to calculate Propensity Score. let's prepare a Logistic Regression model to estimate the propensity scores. That is, the probability of responding to treat.
+
+```{r}
+pscore.model <- glm(treat~age+educ+black+hispan+married+nodegree+re74+re75+re78, family = binomial('logit'), data = lalonde)
+summary(pscore.model)
+```
+
+
+
+```{r}
+m.out1 <- matchit(pscore.model,data=lalonde)
+summary(m.out1, covariates = T)
+```
+
+```{r}
+m.outdata1 <- match.data(m.out1)
+head(m.outdata1, n=10)
+```
+
+Here we can see that at least one person in the treatment group has been matched with one person in the control group.
+
+```{r}
+table_match1 <- CreateTableOne(vars = xvars,strata = "treat", data = m.outdata1, test = FALSE)
+print(table_match1, smd = TRUE)
+```
+
+We can see in the above results that there are 185 control subjects matched with 185 treatment subjects. As our sample dataset is fairly balanced we don't see much difference in doing exact matching.
+
+
+
