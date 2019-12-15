@@ -1,24 +1,18 @@
----
-title: "Propensity Score Matching in R"
-output:
-  word_document: default
-  html_notebook: default
----
-##Introduction
+## Introduction
 
 Randomized controlled trials (RCTs) are considered the gold standard approach for estimating the effects of treatments, interventions, and exposures (hereafter referred to as treatments) on outcomes. Random treatment allocation ensures that treatment status will not be confounded with either measured or unmeasured baseline characteristics. (Austin, 2011)
 Observational (or nonrandomized) studies draw and record the subjects according to the specific characteristics in the natural state, and describe and compare the outcomes to draw conclusions. Unlike RCTs, researchers of such research methods have no (or failed) artificial setting of characteristics of participants.
 The propensity score was defined by (Rosenbaum & Rubin, 1983) to be the probability of treatment assignment conditional on observed baseline covariates: $p_i=Pr(T_i=1|X_i)$. Propensity scores are an alternative method to estimate the effect of receiving treatment when random assignment of treatments to subjects is not feasible. In practice, the propensity score is most often estimated using a logistic regression model. It is the estimate predicted probability of accepting treatment (exposure) derived from the logistic regression model.  Although logistic regression appears to be the most commonly used method for estimating the propensity score, the use of bagging or boosting, recursive partitioning or tree-based methods, random forest, and neural networks for estimating the propensity score have been examined. 
 Propensity score matching (PSM) refers to the pairing of treatment and control units with similar values on the propensity score; and possibly other covariates (the characteristics of participants); and the discarding of all unmatched units.
 
-##What is PSM in simple terms...
+## What is PSM in simple terms...
 
 PSM is done on observational studies. It is done to remove the selection bias between the treatment and the control groups.
 To give an example, if we want to observe the effect of the behavior of smoking on lung cancer; to judge if smoking is the only reason which influenced them to caught lung cancer; we cannot deduce this as we do not know whether the people who smoke are equivalent to the people who do not smoke. There might be other influential factors that cause lung cancer and it might not be the effect of smoking at all. In that case, we can go for a propensity score matching estimation to observe how much impact smoking had on lung cancer.
 
-##Propensity Score Matching in R
+## Propensity Score Matching in R
 
-###Nearest Neighbour Matching
+### Nearest Neighbour Matching
 Here is a demonstration of how to create and analyze matched data for propensity score analysis using the MatchIt package. 
 First, we import a sample data called "lalonde":
 A data frame with 614 obervations with 185 in the treatment group and 429 in the control group. There are 10 variables measured for each individual. "treat" is the treatment assignment (1=treated, 0=control). "age" is age in years. "educ" is education in number of years of schooling. "black" is an indicator for African-American(1=African-American, 0=not). "hispan" is an indicator for being of Hispanic origin (1=Hispanic, 0=not). "married" is an indicator for married (1=married, 0=not married). "nodegree" is an indicator for whether the individual has a high school degree (1=no degree, 0=degree). "re74" is income in 1974, in U.S. dollars. "re75" is income in 1975, in U.S. dollars. "re78" is income in 1978, in U.S. dollars.
